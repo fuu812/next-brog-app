@@ -4,6 +4,7 @@ import type { Post } from "@/app/_types/Post";
 import PostSummary from "@/app/_components/PostSummary";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
 
 const Page: React.FC = () => {
   const [posts, setPosts] = useState<Post[] | null>(null);
@@ -64,10 +65,15 @@ const Page: React.FC = () => {
 
   return (
     <main>
-      <div className="mb-2 text-2xl font-bold">Main</div>
+          <div className="mb-2 text-2xl font-bold">投稿記事一覧</div>
       <div className="space-y-3">
         {posts.map((post) => (
-          <PostSummary key={post.id} post={post} />
+            <div key={post.id}>
+              <PostSummary post={post} />
+              <Link href={`/admin/posts/${post.id}`}>
+                <div className="text-blue-500 underline">{post.title} を編集</div>
+              </Link>
+            </div>
         ))}
       </div>
     </main>
