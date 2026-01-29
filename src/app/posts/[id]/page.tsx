@@ -36,7 +36,14 @@ const Page: React.FC = () => {
         if (!response.ok) {
           throw new Error("データの取得に失敗しました");
         }
-        const data = await response.json();
+        const data = (await response.json()) as {
+          id: string;
+          title: string;
+          content: string;
+          createdAt: string;
+          categories?: Array<{ category: { id: string; name: string } }>;
+          coverImageURL?: string;
+        };
 
         // Transform Prisma response to the frontend Post shape
         const transformed: Post = {
@@ -44,7 +51,9 @@ const Page: React.FC = () => {
           title: data.title,
           content: data.content,
           createdAt: data.createdAt,
-          categories: (data.categories || []).map((c: any) => c.category),
+          categories: (data.categories || []).map(
+            (c: { category: { id: string; name: string } }) => c.category,
+          ),
           coverImage: {
             url: data.coverImageURL ?? "",
             // Prisma doesn't store width/height by default — use sensible defaults
@@ -112,16 +121,17 @@ const Page: React.FC = () => {
             ))}
           </div>
         </div>
-        <div>
-          <Image
-            src={post.coverImage.url}
-            alt="Example Image"
-            width={post.coverImage.width}
-            height={post.coverImage.height}
-            priority
-            className="rounded-xl"
-          />
-        </div>
+        {post.coverImage.url && (
+          <div>
+            <Image
+              src={post.coverImage.url}
+              alt="Example Image"
+              width={800}
+              height={450}
+              className="w-full rounded-xl"
+            />
+          </div>
+        )}
         <div dangerouslySetInnerHTML={{ __html: safeHTML }} />
       </div>
     </main>

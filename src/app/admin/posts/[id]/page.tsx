@@ -53,13 +53,24 @@ const Page: React.FC = () => {
       }
 
       // レスポンスのボディをJSONとして読み取り、フロントエンドの Post[] に変換して State にセット
-      const apiResBody = (await res.json()) as any[];
-      const transformed: Post[] = apiResBody.map((p) => ({
+      type ApiPost = {
+        id: string;
+        title: string;
+        content: string;
+        createdAt: string;
+        categories?: Array<{ category?: { id: string; name: string } }>;
+        coverImageURL?: string;
+        coverImage?: { url?: string; width?: number; height?: number };
+      };
+      const apiResBody = (await res.json()) as ApiPost[];
+      const transformed: Post[] = apiResBody.map((p: ApiPost) => ({
         id: p.id,
         title: p.title,
         content: p.content,
         createdAt: p.createdAt,
-        categories: (p.categories || []).map((c: any) => c.category ?? c),
+        categories: (p.categories || [])
+          .map((c: { category?: { id: string; name: string } }) => c.category)
+          .filter((c): c is { id: string; name: string } => c !== undefined),
         coverImage: {
           url: p.coverImageURL ?? p.coverImage?.url ?? "",
           width: p.coverImage?.width ?? 800,

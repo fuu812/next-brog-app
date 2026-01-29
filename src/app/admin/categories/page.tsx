@@ -23,15 +23,21 @@ const Page: React.FC = () => {
         if (!response.ok) {
           throw new Error("データの取得に失敗しました");
         }
-        const data = await response.json();
+        const data = (await response.json()) as Array<{
+          id: string;
+          name: string;
+          createdAt: string;
+        }>;
 
         // Transform Prisma response to the frontend Category shape
-        const transformed: Category[] = (data || []).map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          createdAt: c.createdAt,
-          //   categories: (c.categories || []).map((c: any) => c.category),
-        }));
+        const transformed: Category[] = (data || []).map(
+          (c: { id: string; name: string; createdAt: string }) => ({
+            id: c.id,
+            name: c.name,
+            createdAt: c.createdAt,
+            //   categories: (c.categories || []).map((c: any) => c.category),
+          }),
+        );
 
         setCategories(transformed);
       } catch (e) {

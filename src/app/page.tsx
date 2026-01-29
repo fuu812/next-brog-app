@@ -23,15 +23,32 @@ const Page: React.FC = () => {
         if (!response.ok) {
           throw new Error("データの取得に失敗しました");
         }
-        const data = await response.json();
+        const data = (await response.json()) as Array<{
+          id: string;
+          title: string;
+          content: string;
+          createdAt: string;
+          categories?: Array<{ category: { id: string; name: string } }>;
+          coverImageURL?: string;
+        }>;
 
         // Transform Prisma response to the frontend Post shape
-        const transformed: Post[] = (data || []).map((p: any) => ({
+        type ApiPost = {
+          id: string;
+          title: string;
+          content: string;
+          createdAt: string;
+          categories?: Array<{ category: { id: string; name: string } }>;
+          coverImageURL?: string;
+        };
+        const transformed: Post[] = (data || []).map((p: ApiPost) => ({
           id: p.id,
           title: p.title,
           content: p.content,
           createdAt: p.createdAt,
-          categories: (p.categories || []).map((c: any) => c.category),
+          categories: (p.categories || []).map(
+            (c: { category: { id: string; name: string } }) => c.category,
+          ),
           coverImage: {
             url: p.coverImageURL ?? "",
             width: 800,
