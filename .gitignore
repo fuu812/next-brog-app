@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-devtools/httpyac
-/src/generated/prisma
+.devtools/httpyac
+# /src/generated/prisma
