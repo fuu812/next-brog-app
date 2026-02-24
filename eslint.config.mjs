@@ -1,15 +1,14 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import pkg from "@eslint/eslintrc";
-
-const { FlatCompat } = pkg;
+import js from "@eslint/js";
+import globals from "globals";
+import react from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
+import typescript from "@typescript-eslint/eslint-plugin";
+import typescriptParser from "@typescript-eslint/parser";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
 
 const eslintConfig = [
   {
@@ -19,18 +18,40 @@ const eslintConfig = [
       "**/out/**",
       "**/build/**",
       "**/next-env.d.ts",
-      "**/src/generated/**", // Ignore generated Prisma client
+      "**/src/generated/**",
     ],
   },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    settings: {
-      tailwindcss: {
-        callees: ["cn", "twMerge", "tv"],
+    files: ["**/*.{js,jsx,ts,tsx}"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
       },
     },
+    plugins: {
+      react,
+      "react-hooks": reactHooks,
+      "@typescript-eslint": typescript,
+    },
     rules: {
+      ...js.configs.recommended.rules,
+      ...typescript.configs.recommended.rules,
+      ...reactHooks.configs.recommended.rules,
       "@typescript-eslint/no-unused-vars": "off",
+    },
+    settings: {
+      react: {
+        version: "detect",
+      },
     },
   },
 ];
