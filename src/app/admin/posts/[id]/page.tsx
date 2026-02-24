@@ -1,11 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
+import { supabase } from "@/utils/supabase";
+import { calculateMD5Hash } from "@/app/_utils/calculateMD5Hash";
 import { useParams, useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { twMerge } from "tailwind-merge";
 import { Post } from "@/app/_types/Post";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { useAuth } from "@/app/_hooks/useAuth";
 import Link from "next/link";
 
 // postの編集・削除のページ
@@ -20,9 +23,11 @@ const Page: React.FC = () => {
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostContentError, setNewPostContentError] = useState("");
 
-  const [newCoverImageURL, setNewCoverImageURL] = useState("");
+  const [newCoverImageKey, setNewCoverImageKey] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState<string>("");
   const [newCoverImageURLError, setNewCoverImageURLError] = useState("");
 
+  const { token } = useAuth(); // トークンの取得
   // 動的ルートパラメータから id を取得 （URL:/admin/posts/[id]）
   const { id } = useParams() as { id: string };
 
@@ -105,11 +110,34 @@ const Page: React.FC = () => {
     if (current) {
       setNewPostTitle((prev) => (prev === "" ? current.title : prev));
       setNewPostContent((prev) => (prev === "" ? current.content : prev));
-      setNewCoverImageURL((prev) =>
-        prev === "" ? current.coverImage.url : prev,
+      setNewCoverImageKey(
+        current.coverImage?.url ? current.coverImage.url : "",
       );
+      setCoverImageUrl(current.coverImage?.url || "");
     }
   }, [currentPost]);
+
+  // 画像ファイル選択時の処理
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    setNewCoverImageKey("");
+    setCoverImageUrl("");
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const fileHash = await calculateMD5Hash(file);
+    const path = `private/${fileHash}`;
+    const { data, error } = await supabase.storage
+      .from("cover-image")
+      .upload(path, file, { upsert: true });
+    if (error || !data) {
+      window.alert(`アップロードに失敗 ${error?.message}`);
+      return;
+    }
+    setNewCoverImageKey(data.path);
+    const publicUrlResult = supabase.storage
+      .from("cover-image")
+      .getPublicUrl(data.path);
+    setCoverImageUrl(publicUrlResult.data.publicUrl);
+  };
 
   // 投稿のタイトルのバリデーション
   const isValidPostTitle = (name: string): string => {
@@ -131,6 +159,10 @@ const Page: React.FC = () => {
   // 「titleの名前を変更」のボタンが押下されたときにコールされる関数
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // これを実行しないと意図せずページがリロードされるので注意
+    if (!token) {
+      window.alert("予期せぬ動作：トークンが取得できません。");
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -140,11 +172,12 @@ const Page: React.FC = () => {
         cache: "no-store",
         headers: {
           "Content-Type": "application/json",
+          Authorization: token,
         },
         body: JSON.stringify({
           title: newPostTitle,
           content: newPostContent,
-          coverImageURL: newCoverImageURL,
+          coverImageKey: newCoverImageKey,
         }),
       });
 
@@ -154,7 +187,8 @@ const Page: React.FC = () => {
 
       setNewPostTitle("");
       setNewPostContent("");
-      setNewCoverImageURL("");
+      setNewCoverImageKey("");
+      setCoverImageUrl("");
       await fetchPosts(); // 投稿の一覧を再取得
     } catch (error) {
       const errorMsg =
@@ -171,7 +205,16 @@ const Page: React.FC = () => {
   // 「削除」のボタンが押下されたときにコールされる関数
   const handleDelete = async () => {
     // prettier-ignore
-    if (!window.confirm(`投稿「${currentPost?.title ?? id}」を本当に削除しますか？`)) {
+    // ▼ 追加: トークンが取得できない場合はアラートを表示して処理中断
+    if (!token) {
+      window.alert("予期せぬ動作：トークンが取得できません。");
+      return;
+    }
+    if (
+      !window.confirm(
+        `投稿「${currentPost?.title ?? id}」を本当に削除しますか？`,
+      )
+    ) {
       return;
     }
 
@@ -181,6 +224,9 @@ const Page: React.FC = () => {
       const res = await fetch(requestUrl, {
         method: "DELETE",
         cache: "no-store",
+        headers: {
+          Authorization: token, // ◀ 追加
+        },
       });
 
       if (!res.ok) {
@@ -287,27 +333,23 @@ const Page: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="cover" className="block font-bold">
-              カバー画像の URL
+            <label htmlFor="coverImageFile" className="block font-bold">
+              カバー画像 (画像アップロード)
             </label>
             <input
-              type="text"
-              id="cover"
-              name="cover"
+              type="file"
+              id="coverImageFile"
+              name="coverImageFile"
+              accept="image/*"
               className="w-full rounded-md border-2 px-2 py-1"
-              placeholder="画像URLを入力してください"
-              value={newCoverImageURL}
-              onChange={(e) => setNewCoverImageURL(e.target.value)}
-              autoComplete="off"
+              onChange={handleImageChange}
             />
-            {newCoverImageURLError && (
-              <div className="flex items-center space-x-1 text-sm font-bold text-red-500">
-                <FontAwesomeIcon
-                  icon={faTriangleExclamation}
-                  className="mr-0.5"
-                />
-                <div>{newCoverImageURLError}</div>
-              </div>
+            {coverImageUrl && (
+              <img
+                src={coverImageUrl}
+                alt="カバー画像プレビュー"
+                className="mt-2 max-h-48 rounded"
+              />
             )}
           </div>
         </div>

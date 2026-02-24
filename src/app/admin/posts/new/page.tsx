@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
+import { supabase } from "@/utils/supabase";
+import { calculateMD5Hash } from "@/app/_utils/calculateMD5Hash";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
@@ -29,7 +31,8 @@ const Page: React.FC = () => {
 
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
-  const [newCoverImageURL, setNewCoverImageURL] = useState("");
+  const [newCoverImageKey, setNewCoverImageKey] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState<string>("");
 
   const { token } = useAuth(); // トークンの取得
   const router = useRouter();
@@ -107,9 +110,26 @@ const Page: React.FC = () => {
     setNewContent(e.target.value);
   };
 
-  const updateNewCoverImageURL = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // ここにカバーイメージURLのバリデーション処理を追加する
-    setNewCoverImageURL(e.target.value);
+  // 画像ファイル選択時の処理
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    setNewCoverImageKey("");
+    setCoverImageUrl("");
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const fileHash = await calculateMD5Hash(file);
+    const path = `private/${fileHash}`;
+    const { data, error } = await supabase.storage
+      .from("cover-image")
+      .upload(path, file, { upsert: true });
+    if (error || !data) {
+      window.alert(`アップロードに失敗 ${error?.message}`);
+      return;
+    }
+    setNewCoverImageKey(data.path);
+    const publicUrlResult = supabase.storage
+      .from("cover-image")
+      .getPublicUrl(data.path);
+    setCoverImageUrl(publicUrlResult.data.publicUrl);
   };
 
   // フォームの送信処理
@@ -129,7 +149,7 @@ const Page: React.FC = () => {
       const requestBody = {
         title: newTitle,
         content: newContent,
-        coverImageURL: newCoverImageURL,
+        coverImageKey: newCoverImageKey,
         categoryIds: checkableCategories
           ? checkableCategories.filter((c) => c.isSelect).map((c) => c.id)
           : [],
@@ -229,19 +249,24 @@ const Page: React.FC = () => {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="coverImageURL" className="block font-bold">
-            カバーイメージ (URL)
+          <label htmlFor="coverImageFile" className="block font-bold">
+            カバーイメージ (画像アップロード)
           </label>
           <input
-            type="url"
-            id="coverImageURL"
-            name="coverImageURL"
+            type="file"
+            id="coverImageFile"
+            name="coverImageFile"
+            accept="image/*"
             className="w-full rounded-md border-2 px-2 py-1"
-            value={newCoverImageURL}
-            onChange={updateNewCoverImageURL}
-            placeholder="カバーイメージのURLを記入してください"
-            required
+            onChange={handleImageChange}
           />
+          {coverImageUrl && (
+            <img
+              src={coverImageUrl}
+              alt="カバー画像プレビュー"
+              className="mt-2 max-h-48 rounded"
+            />
+          )}
         </div>
 
         <div className="space-y-1">

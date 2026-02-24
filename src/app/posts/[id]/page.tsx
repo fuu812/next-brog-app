@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase";
 import { useParams } from "next/navigation"; // ◀ 注目
 
 import type { Post } from "@/app/_types/Post";
@@ -15,6 +16,7 @@ const dtFmt = "YYYY-MM-DD";
 // 投稿記事の詳細表示 /posts/[id]
 const Page: React.FC = () => {
   const [post, setPost] = useState<Post | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -42,10 +44,18 @@ const Page: React.FC = () => {
           content: string;
           createdAt: string;
           categories?: Array<{ category: { id: string; name: string } }>;
-          coverImageURL?: string;
+          coverImageKey?: string;
         };
 
-        // Transform Prisma response to the frontend Post shape
+        // coverImageKeyから画像URLを取得
+        let imageUrl = "";
+        if (data.coverImageKey) {
+          const { data: publicUrlData } = supabase.storage
+            .from("cover-image")
+            .getPublicUrl(data.coverImageKey);
+          imageUrl = publicUrlData?.publicUrl || "";
+        }
+
         const transformed: Post = {
           id: data.id,
           title: data.title,
@@ -55,14 +65,14 @@ const Page: React.FC = () => {
             (c: { category: { id: string; name: string } }) => c.category,
           ),
           coverImage: {
-            url: data.coverImageURL ?? "",
-            // Prisma doesn't store width/height by default — use sensible defaults
+            url: imageUrl,
             width: 800,
             height: 450,
           },
         };
 
         setPost(transformed);
+        setCoverImageUrl(imageUrl);
       } catch (e) {
         setFetchError(
           e instanceof Error ? e.message : "予期せぬエラーが発生しました",
@@ -121,10 +131,10 @@ const Page: React.FC = () => {
             ))}
           </div>
         </div>
-        {post.coverImage.url && (
+        {coverImageUrl && (
           <div>
             <Image
-              src={post.coverImage.url}
+              src={coverImageUrl}
               alt="Example Image"
               width={800}
               height={450}

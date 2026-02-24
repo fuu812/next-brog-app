@@ -7,7 +7,7 @@ import { useAuth } from "@/app/_hooks/useAuth";
 type RequestBody = {
   title: string;
   content: string;
-  coverImageURL: string;
+  coverImageKey: string;
   categoryIds: string[];
 };
 
@@ -20,9 +20,7 @@ export const POST = async (req: NextRequest) => {
 
   try {
     const requestBody: RequestBody = await req.json();
-
-    // 分割代入
-    const { title, content, coverImageURL, categoryIds } = requestBody;
+    const { title, content, coverImageKey, categoryIds } = requestBody;
 
     // categoryIds で指定されるカテゴリがDB上に存在するか確認
     const categories = await prisma.category.findMany({
@@ -42,9 +40,9 @@ export const POST = async (req: NextRequest) => {
     // 投稿記事テーブルにレコードを追加
     const post: Post = await prisma.post.create({
       data: {
-        title, // title: title の省略形であることに注意。以下も同様
+        title,
         content,
-        coverImageURL,
+        coverImageKey,
       },
     });
 
@@ -66,4 +64,4 @@ export const POST = async (req: NextRequest) => {
       { status: 500 },
     );
   }
-};;
+};

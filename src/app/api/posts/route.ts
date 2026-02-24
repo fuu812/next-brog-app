@@ -12,7 +12,7 @@ export const GET = async (req: NextRequest) => {
         id: true,
         title: true,
         content: true,
-        coverImageURL: true,
+        coverImageKey: true,
         createdAt: true,
         updatedAt: true,
         categories: {
