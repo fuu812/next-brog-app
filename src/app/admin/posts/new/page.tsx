@@ -266,7 +266,7 @@ const Page: React.FC = () => {
               src={coverImageUrl}
               alt="カバー画像プレビュー"
               width={800}
-              height={450}
+              height={650}
               className="mt-2 max-h-48 rounded"
             />
           )}

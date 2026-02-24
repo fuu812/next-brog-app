@@ -12,6 +12,21 @@ import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "@/app/_hooks/useAuth";
 import Link from "next/link";
 
+// カテゴリをフェッチしたときのレスポンスのデータ型
+type CategoryApiResponse = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// 投稿記事のカテゴリ選択用のデータ型
+type SelectableCategory = {
+  id: string;
+  name: string;
+  isSelect: boolean;
+};
+
 // postの編集・削除のページ
 const Page: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +42,10 @@ const Page: React.FC = () => {
   const [newCoverImageKey, setNewCoverImageKey] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState<string>("");
   const [newCoverImageURLError, setNewCoverImageURLError] = useState("");
+
+  const [checkableCategories, setCheckableCategories] = useState<
+    SelectableCategory[] | null
+  >(null);
 
   const { token } = useAuth(); // トークンの取得
   // 動的ルートパラメータから id を取得 （URL:/admin/posts/[id]）
@@ -99,6 +118,42 @@ const Page: React.FC = () => {
 
   // コンポーネントがマウントされたとき (初回レンダリングのとき) に1回だけ実行
   useEffect(() => {
+    // カテゴリの取得
+    const fetchCategories = async () => {
+      try {
+        setIsLoading(true);
+        const requestUrl = "/api/categories";
+        const res = await fetch(requestUrl, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          setCheckableCategories(null);
+          throw new Error(`${res.status}: ${res.statusText}`);
+        }
+
+        const apiResBody = (await res.json()) as CategoryApiResponse[];
+        setCheckableCategories(
+          apiResBody.map((body) => ({
+            id: body.id,
+            name: body.name,
+            isSelect: false,
+          })),
+        );
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error
+            ? `カテゴリの一覧のフェッチに失敗しました: ${error.message}`
+            : `予期せぬエラーが発生しました ${error}`;
+        console.error(errorMsg);
+        setFetchErrorMsg(errorMsg);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
     fetchPosts();
   }, []);
 
@@ -108,15 +163,23 @@ const Page: React.FC = () => {
   // 投稿が読み込まれたらフォームの初期値を設定（ユーザーが入力済みなら上書きしない）
   useEffect(() => {
     const current = currentPost;
-    if (current) {
-      setNewPostTitle((prev) => (prev === "" ? current.title : prev));
-      setNewPostContent((prev) => (prev === "" ? current.content : prev));
+    if (current && checkableCategories && checkableCategories.length > 0) {
+      setNewPostTitle(current.title);
+      setNewPostContent(current.content);
       setNewCoverImageKey(
         current.coverImage?.url ? current.coverImage.url : "",
       );
       setCoverImageUrl(current.coverImage?.url || "");
+      // カテゴリの選択状態を設定
+      setCheckableCategories((prev) =>
+        prev.map((category) => ({
+          ...category,
+          isSelect:
+            current.categories?.some((c) => c.id === category.id) ?? false,
+        })),
+      );
     }
-  }, [currentPost]);
+  }, [currentPost?.id]);
 
   // 画像ファイル選択時の処理
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -151,6 +214,19 @@ const Page: React.FC = () => {
     return "";
   };
 
+  // チェックボックスの状態 (State) を更新する関数
+  const switchCategoryState = (categoryId: string) => {
+    if (!checkableCategories) return;
+
+    setCheckableCategories(
+      checkableCategories.map((category) =>
+        category.id === categoryId
+          ? { ...category, isSelect: !category.isSelect }
+          : category,
+      ),
+    );
+  };
+
   // titleの名前を設定するテキストボックスの値が変更されたときにコールされる関数
   const updateNewPostTitle = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewPostTitleError(isValidPostTitle(e.target.value));
@@ -179,6 +255,9 @@ const Page: React.FC = () => {
           title: newPostTitle,
           content: newPostContent,
           coverImageKey: newCoverImageKey,
+          categoryIds: checkableCategories
+            ? checkableCategories.filter((c) => c.isSelect).map((c) => c.id)
+            : [],
         }),
       });
 
@@ -346,14 +425,38 @@ const Page: React.FC = () => {
               onChange={handleImageChange}
             />
             {coverImageUrl && (
-              <Image
-                src={coverImageUrl}
-                alt="カバー画像プレビュー"
-                width={800}
-                height={450}
-                className="mt-2 max-h-48 rounded"
-              />
+              <div className="relative mt-2 h-48 w-full overflow-hidden rounded">
+                <Image
+                  src={coverImageUrl}
+                  alt="カバー画像プレビュー"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
             )}
+          </div>
+
+          <div className="space-y-1">
+            <div className="font-bold">タグ</div>
+            <div className="flex flex-wrap gap-x-3.5">
+              {checkableCategories && checkableCategories.length > 0 ? (
+                checkableCategories.map((c) => (
+                  <label key={c.id} className="flex space-x-1">
+                    <input
+                      id={c.id}
+                      type="checkbox"
+                      checked={c.isSelect}
+                      className="mt-0.5 cursor-pointer"
+                      onChange={() => switchCategoryState(c.id)}
+                    />
+                    <span className="cursor-pointer">{c.name}</span>
+                  </label>
+                ))
+              ) : (
+                <div>選択可能なカテゴリが存在しません。</div>
+              )}
+            </div>
           </div>
         </div>
 

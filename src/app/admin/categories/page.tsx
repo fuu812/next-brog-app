@@ -9,15 +9,15 @@ import { useAuth } from "@/app/_hooks/useAuth";
 const Page: React.FC = () => {
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const { token } = useAuth(); // トークンの取得
+  const { isLoading, token } = useAuth(); // トークンの取得と読み込み状態
   // Use local Prisma-backed API endpoints
 
   useEffect(() => {
-    // ▼ 追加: トークンが取得できない場合はアラートを表示して処理中断
-    if (!token) {
-      window.alert("予期せぬ動作：トークンが取得できません。");
+    // トークン取得中の場合は何もしない
+    if (isLoading) {
       return;
     }
+
     const fetchCategories = async () => {
       try {
         // local Prisma-backed API からカテゴリデータを取得
@@ -25,9 +25,6 @@ const Page: React.FC = () => {
         const response = await fetch(requestUrl, {
           method: "GET",
           cache: "no-store",
-          headers: {
-            Authorization: token, // ◀ 追加
-          },
         });
         if (!response.ok) {
           throw new Error("データの取得に失敗しました");
@@ -56,7 +53,7 @@ const Page: React.FC = () => {
       }
     };
     fetchCategories();
-  }, [token]);
+  }, [isLoading]);
 
   if (fetchError) {
     return <div>{fetchError}</div>;
