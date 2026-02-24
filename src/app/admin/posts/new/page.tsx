@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, ChangeEvent } from "react";
+import Image from "next/image";
 import { supabase } from "@/utils/supabase";
 import { calculateMD5Hash } from "@/app/_utils/calculateMD5Hash";
 import { useRouter } from "next/navigation";
@@ -261,9 +262,11 @@ const Page: React.FC = () => {
             onChange={handleImageChange}
           />
           {coverImageUrl && (
-            <img
+            <Image
               src={coverImageUrl}
               alt="カバー画像プレビュー"
+              width={800}
+              height={450}
               className="mt-2 max-h-48 rounded"
             />
           )}
