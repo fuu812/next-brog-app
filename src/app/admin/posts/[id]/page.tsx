@@ -170,13 +170,15 @@ const Page: React.FC = () => {
         current.coverImage?.url ? current.coverImage.url : "",
       );
       setCoverImageUrl(current.coverImage?.url || "");
-      // カテゴリの選択状態を設定
+      // カテゴリの選択状態を設定（prevがnullの可能性を考慮）
       setCheckableCategories((prev) =>
-        prev.map((category) => ({
-          ...category,
-          isSelect:
-            current.categories?.some((c) => c.id === category.id) ?? false,
-        })),
+        prev
+          ? prev.map((category) => ({
+              ...category,
+              isSelect:
+                current.categories?.some((c) => c.id === category.id) ?? false,
+            }))
+          : prev,
       );
     }
   }, [currentPost?.id]);
