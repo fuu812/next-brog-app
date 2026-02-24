@@ -11,6 +11,9 @@ type RequestBody = {
   categoryIds: string[];
 };
 
+export const revalidate = 0; // ◀ サーバサイドのキャッシュを無効化する設定
+export const dynamic = "force-dynamic"; // ◀ 〃
+
 export const POST = async (req: NextRequest) => {
   // JWTトークンの検証・認証 (失敗したら 401 Unauthorized を返す)
   const token = req.headers.get("Authorization") ?? "";
