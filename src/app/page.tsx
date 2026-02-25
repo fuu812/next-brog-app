@@ -81,7 +81,7 @@ const Page: React.FC = () => {
 
   return (
     <main>
-      <div className="mb-2 text-2xl font-bold">Main</div>
+      <div className="mb-2 text-2xl font-bold">ようこそ</div>
       <div className="space-y-3">
         {posts.map((post) => (
           <PostSummary key={post.id} post={post} />
