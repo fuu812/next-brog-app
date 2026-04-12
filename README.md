@@ -6,7 +6,7 @@
 
 ## 使用技術
 
-- 使用言語、フレームワーク
+- 使用言語とフレームワーク
   - TypeScript
   - Next.js
   - Prisma
